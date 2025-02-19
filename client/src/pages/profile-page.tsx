@@ -1,13 +1,18 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import type { Listing, Transaction, Review } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Listing, Transaction, Review, ModerationRequest } from "@shared/schema";
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+
   const { data: listings, isLoading: listingsLoading } = useQuery<Listing[]>({
     queryKey: ["/api/listings"],
   });
@@ -20,7 +25,33 @@ export default function ProfilePage() {
     queryKey: ["/api/reviews"],
   });
 
-  if (listingsLoading || transactionsLoading || reviewsLoading) {
+  const { data: moderationRequests, isLoading: moderationRequestsLoading } = useQuery<ModerationRequest[]>({
+    queryKey: ["/api/moderation-requests"],
+    enabled: user?.isModerator,
+  });
+
+  const createModerationRequestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/moderation-requests");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/moderation-requests"] });
+      toast({
+        title: "Заявка отправлена",
+        description: "Ваша заявка на роль модератора отправлена на рассмотрение",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (listingsLoading || transactionsLoading || reviewsLoading || moderationRequestsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -36,6 +67,10 @@ export default function ProfilePage() {
     (r) => r.toUserId === user?.id
   ) || [];
 
+  const pendingModerationRequest = moderationRequests?.find(
+    (r) => r.userId === user?.id && r.status === "pending"
+  );
+
   return (
     <div className="container py-8">
       <div className="flex items-center gap-6 mb-8">
@@ -43,11 +78,28 @@ export default function ProfilePage() {
           <AvatarImage src={user?.avatar} alt={user?.username} />
           <AvatarFallback>{user?.username?.[0]}</AvatarFallback>
         </Avatar>
-        <div>
-          <h1 className="text-3xl font-bold">{user?.username}</h1>
-          <p className="text-muted-foreground">
-            Баланс: {Number(user?.balance).toFixed(2)} ₽
-          </p>
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">{user?.username}</h1>
+              <p className="text-muted-foreground">
+                Баланс: {Number(user?.balance).toFixed(2)} ₽
+              </p>
+            </div>
+            {!user?.isModerator && (
+              <Button
+                onClick={() => createModerationRequestMutation.mutate()}
+                disabled={
+                  createModerationRequestMutation.isPending || 
+                  pendingModerationRequest !== undefined
+                }
+              >
+                {pendingModerationRequest
+                  ? "Заявка на рассмотрении"
+                  : "Стать модератором"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

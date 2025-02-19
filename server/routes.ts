@@ -88,6 +88,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(listing);
   });
 
+  // Добавляем новые маршруты для работы с заявками на модерацию
+
+  // Получение всех заявок на модерацию (только для модераторов)
+  app.get("/api/moderation-requests", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isModerator) return res.sendStatus(403);
+    const requests = await storage.getModerationRequests();
+    res.json(requests);
+  });
+
+  // Создание новой заявки на модерацию
+  app.post("/api/moderation-requests", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    // Проверяем, нет ли уже активной заявки
+    const requests = await storage.getModerationRequests();
+    const hasActiveRequest = requests.some(
+      r => r.userId === req.user.id && r.status === "pending"
+    );
+
+    if (hasActiveRequest) {
+      return res.status(400).send("У вас уже есть активная заявка на модерацию");
+    }
+
+    const request = await storage.createModerationRequest({
+      userId: req.user.id,
+    });
+    res.status(201).json(request);
+  });
+
+  // Обработка заявки на модерацию (одобрение/отклонение)
+  app.post("/api/moderation-requests/:id", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isModerator) return res.sendStatus(403);
+
+    const { action, comment } = req.body;
+    if (action !== "approve" && action !== "reject") {
+      return res.status(400).send("Неверное действие");
+    }
+
+    const request = await storage.updateModerationRequestStatus(
+      parseInt(req.params.id),
+      action === "approve" ? "approved" : "rejected",
+      comment || null
+    );
+
+    res.json(request);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

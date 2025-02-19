@@ -11,6 +11,14 @@ export const users = pgTable("users", {
   isModerator: boolean("is_moderator").default(false).notNull(),
 });
 
+export const moderationRequests = pgTable("moderation_requests", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  comment: text("comment"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const listings = pgTable("listings", {
   id: serial("id").primaryKey(),
   sellerId: integer("seller_id").notNull().references(() => users.id),
@@ -18,7 +26,7 @@ export const listings = pgTable("listings", {
   description: text("description").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   category: text("category").notNull(),
-  status: text("status").notNull().default("pending"), // pending, active, sold, rejected
+  status: text("status").notNull().default("pending"),
   imageUrl: text("image_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -29,7 +37,7 @@ export const transactions = pgTable("transactions", {
   buyerId: integer("buyer_id").notNull().references(() => users.id),
   sellerId: integer("seller_id").notNull().references(() => users.id),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull(), // completed, cancelled, dispute
+  status: text("status").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -43,6 +51,12 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Schema для создания нового запроса на модерацию
+export const insertModerationRequestSchema = createInsertSchema(moderationRequests).pick({
+  userId: true,
+});
+
+// Существующие схемы
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -61,6 +75,7 @@ export const insertReviewSchema = createInsertSchema(reviews).pick({
   comment: true,
 });
 
+// Типы
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Listing = typeof listings.$inferSelect;
@@ -68,3 +83,5 @@ export type InsertListing = z.infer<typeof insertListingSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
+export type ModerationRequest = typeof moderationRequests.$inferSelect;
+export type InsertModerationRequest = z.infer<typeof insertModerationRequestSchema>;

@@ -3,8 +3,8 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import session from "express-session";
-import type { User, Listing, Transaction, Review } from "@shared/schema";
-import { users, listings, transactions, reviews } from "@shared/schema";
+import type { User, Listing, Transaction, Review, ModerationRequest } from "@shared/schema";
+import { users, listings, transactions, reviews, moderationRequests } from "@shared/schema";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -117,6 +117,50 @@ export class DatabaseStorage implements IStorage {
 
   async getReviews(): Promise<Review[]> {
     return await db.select().from(reviews);
+  }
+
+  async getModerationRequests(): Promise<ModerationRequest[]> {
+    return await db.select().from(moderationRequests);
+  }
+
+  async getModerationRequest(id: number): Promise<ModerationRequest | undefined> {
+    const [request] = await db.select().from(moderationRequests).where(eq(moderationRequests.id, id));
+    return request;
+  }
+
+  async createModerationRequest(data: Omit<ModerationRequest, "id" | "status" | "comment" | "createdAt">): Promise<ModerationRequest> {
+    const [request] = await db.insert(moderationRequests).values({
+      ...data,
+      status: "pending",
+      comment: null,
+      createdAt: new Date(),
+    }).returning();
+    return request;
+  }
+
+  async updateModerationRequestStatus(
+    id: number,
+    status: string,
+    comment: string | null
+  ): Promise<ModerationRequest | undefined> {
+    const [request] = await db
+      .update(moderationRequests)
+      .set({ status, comment })
+      .where(eq(moderationRequests.id, id))
+      .returning();
+
+    if (status === "approved") {
+      const moderationRequest = await this.getModerationRequest(id);
+      if (moderationRequest) {
+        // Обновляем статус пользователя на модератора
+        await db
+          .update(users)
+          .set({ isModerator: true })
+          .where(eq(users.id, moderationRequest.userId));
+      }
+    }
+
+    return request;
   }
 }
 
