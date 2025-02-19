@@ -24,15 +24,23 @@ const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
+  const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${derivedKey.toString("hex")}.${salt}`;
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  try {
+    const [hashedPassword, salt] = stored.split(".");
+    if (!hashedPassword || !salt) {
+      return false;
+    }
+    const suppliedHash = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    const storedHash = Buffer.from(hashedPassword, "hex");
+    return timingSafeEqual(storedHash, suppliedHash);
+  } catch (error) {
+    console.error("Error comparing passwords:", error);
+    return false;
+  }
 }
 
 export function setupAuth(app: Express) {
@@ -52,9 +60,15 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
+        if (!user) {
           return done(null, false);
         }
+
+        const isValid = await comparePasswords(password, user.password);
+        if (!isValid) {
+          return done(null, false);
+        }
+
         return done(null, user);
       } catch (err) {
         return done(err);
@@ -76,12 +90,13 @@ export function setupAuth(app: Express) {
     try {
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
-        return res.status(400).send("Username already exists");
+        return res.status(400).send("Пользователь с таким именем уже существует");
       }
 
+      const hashedPassword = await hashPassword(req.body.password);
       const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
+        username: req.body.username,
+        password: hashedPassword,
       });
 
       req.login(user, (err) => {
