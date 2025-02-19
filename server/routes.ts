@@ -164,6 +164,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(request);
   });
 
+
+  // Чаты
+  app.get("/api/chats", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const chats = await storage.getUserChats(req.user.id);
+    res.json(chats);
+  });
+
+  app.post("/api/chats", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { listingId } = req.body;
+
+    const listing = await storage.getListing(listingId);
+    if (!listing) return res.status(404).send("Объявление не найдено");
+
+    // Проверяем, существует ли уже чат
+    const existingChats = await storage.getUserChats(req.user.id);
+    const existingChat = existingChats.find(
+      chat => chat.listingId === listingId && 
+      chat.buyerId === req.user.id &&
+      chat.sellerId === listing.sellerId
+    );
+
+    if (existingChat) {
+      return res.json(existingChat);
+    }
+
+    const chat = await storage.createChat({
+      listingId,
+      buyerId: req.user.id,
+      sellerId: listing.sellerId,
+    });
+
+    res.status(201).json(chat);
+  });
+
+  app.get("/api/chats/:id/messages", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const chat = await storage.getChat(parseInt(req.params.id));
+    if (!chat) return res.status(404).send("Чат не найден");
+
+    // Проверяем, является ли пользователь участником чата
+    if (chat.buyerId !== req.user.id && chat.sellerId !== req.user.id) {
+      return res.sendStatus(403);
+    }
+
+    const messages = await storage.getChatMessages(chat.id);
+    res.json(messages);
+  });
+
+  app.post("/api/chats/:id/messages", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const chat = await storage.getChat(parseInt(req.params.id));
+    if (!chat) return res.status(404).send("Чат не найден");
+
+    // Проверяем, является ли пользователь участником чата
+    if (chat.buyerId !== req.user.id && chat.sellerId !== req.user.id) {
+      return res.sendStatus(403);
+    }
+
+    const message = await storage.createMessage({
+      chatId: chat.id,
+      senderId: req.user.id,
+      content: req.body.content,
+    });
+
+    res.status(201).json(message);
+  });
+
+  app.post("/api/chats/:id/read", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const chat = await storage.getChat(parseInt(req.params.id));
+    if (!chat) return res.status(404).send("Чат не найден");
+
+    // Проверяем, является ли пользователь участником чата
+    if (chat.buyerId !== req.user.id && chat.sellerId !== req.user.id) {
+      return res.sendStatus(403);
+    }
+
+    await storage.markMessagesAsRead(chat.id, req.user.id);
+    res.sendStatus(200);
+  });
+
+  // Избранное
+  app.post("/api/favorites", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const favorite = await storage.addToFavorites({
+      userId: req.user.id,
+      listingId: req.body.listingId,
+    });
+    res.status(201).json(favorite);
+  });
+
+  app.delete("/api/favorites/:listingId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    await storage.removeFromFavorites(
+      req.user.id,
+      parseInt(req.params.listingId)
+    );
+    res.sendStatus(200);
+  });
+
+  app.get("/api/favorites", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const favorites = await storage.getUserFavorites(req.user.id);
+    res.json(favorites);
+  });
+
+  // Подписки на поиск
+  app.post("/api/search-subscriptions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const subscription = await storage.createSearchSubscription({
+      userId: req.user.id,
+      ...req.body,
+    });
+    res.status(201).json(subscription);
+  });
+
+  app.get("/api/search-subscriptions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const subscriptions = await storage.getUserSearchSubscriptions(req.user.id);
+    res.json(subscriptions);
+  });
+
+  // Арбитраж
+  app.post("/api/disputes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const dispute = await storage.createDispute({
+      initiatorId: req.user.id,
+      ...req.body,
+    });
+    res.status(201).json(dispute);
+  });
+
+  app.post("/api/disputes/:id", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isModerator) return res.sendStatus(403);
+    const dispute = await storage.updateDisputeStatus(
+      parseInt(req.params.id),
+      req.body.status,
+      req.body.resolution,
+      req.user.id
+    );
+    res.json(dispute);
+  });
+
+  app.get("/api/disputes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    // Модераторы видят все споры, пользователи только свои
+    let disputes;
+    if (req.user.isModerator) {
+      disputes = await storage.getDisputes(req.query.status as string);
+    } else {
+      disputes = (await storage.getDisputes()).filter(
+        d => d.initiatorId === req.user.id
+      );
+    }
+
+    res.json(disputes);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

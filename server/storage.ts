@@ -1,40 +1,18 @@
 import { IStorage } from "./auth";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, desc, or, sql, not } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import session from "express-session";
-import type { User, Listing, Transaction, Review, ModerationRequest, Category } from "@shared/schema";
-import { users, listings, transactions, reviews, moderationRequests, categories } from "@shared/schema";
+import type { 
+  User, Listing, Transaction, Review, ModerationRequest, Category,
+  Chat, Message, Favorite, SearchSubscription, Dispute, Achievement, UserAchievement 
+} from "@shared/schema";
+import { 
+  users, listings, transactions, reviews, moderationRequests, categories,
+  chats, messages, favorites, searchSubscriptions, disputes, achievements, userAchievements 
+} from "@shared/schema";
 
 const PostgresSessionStore = connectPg(session);
-
-export interface IStorage {
-  sessionStore: session.Store;
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(insertUser: Omit<User, "id" | "avatar" | "balance" | "isModerator">): Promise<User>;
-  getListings(): Promise<Listing[]>;
-  getListing(id: number): Promise<Listing | undefined>;
-  createListing(data: Omit<Listing, "id" | "status" | "createdAt">): Promise<Listing>;
-  updateListingStatus(id: number, status: string): Promise<Listing | undefined>;
-  getTransaction(id: number): Promise<Transaction | undefined>;
-  getTransactions(): Promise<Transaction[]>;
-  createTransaction(data: Omit<Transaction, "id" | "status" | "createdAt">): Promise<Transaction>;
-  createReview(data: Omit<Review, "id" | "createdAt">): Promise<Review>;
-  getReviews(): Promise<Review[]>;
-  getModerationRequests(): Promise<ModerationRequest[]>;
-  getModerationRequest(id: number): Promise<ModerationRequest | undefined>;
-  createModerationRequest(data: Omit<ModerationRequest, "id" | "status" | "comment" | "createdAt">): Promise<ModerationRequest>;
-  updateModerationRequestStatus(id: number, status: string, comment: string | null): Promise<ModerationRequest | undefined>;
-  getCategories(): Promise<Category[]>;
-  createCategory(data: InsertCategory): Promise<Category>;
-}
-
-interface InsertCategory {
-  name: string;
-  description?: string;
-}
-
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
@@ -201,6 +179,173 @@ export class DatabaseStorage implements IStorage {
       createdAt: new Date(),
     }).returning();
     return category;
+  }
+
+  // Чаты
+  async createChat(data: Omit<Chat, "id" | "createdAt" | "lastMessageAt" | "status">): Promise<Chat> {
+    const [chat] = await db.insert(chats).values({
+      ...data,
+      createdAt: new Date(),
+      lastMessageAt: new Date(),
+      status: "active",
+    }).returning();
+    return chat;
+  }
+
+  async getChat(id: number): Promise<Chat | undefined> {
+    const [chat] = await db.select().from(chats).where(eq(chats.id, id));
+    return chat;
+  }
+
+  async getUserChats(userId: number): Promise<Chat[]> {
+    return await db.select()
+      .from(chats)
+      .where(
+        or(
+          eq(chats.buyerId, userId),
+          eq(chats.sellerId, userId)
+        )
+      )
+      .orderBy(desc(chats.lastMessageAt));
+  }
+
+  // Сообщения
+  async createMessage(data: Omit<Message, "id" | "createdAt" | "isRead">): Promise<Message> {
+    const [message] = await db.insert(messages).values({
+      ...data,
+      createdAt: new Date(),
+      isRead: false,
+    }).returning();
+
+    // Обновляем время последнего сообщения в чате
+    await db.update(chats)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(chats.id, data.chatId));
+
+    return message;
+  }
+
+  async getChatMessages(chatId: number): Promise<Message[]> {
+    return await db.select()
+      .from(messages)
+      .where(eq(messages.chatId, chatId))
+      .orderBy(desc(messages.createdAt));
+  }
+
+  async markMessagesAsRead(chatId: number, userId: number): Promise<void> {
+    await db.update(messages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(messages.chatId, chatId),
+          not(eq(messages.senderId, userId))
+        )
+      );
+  }
+
+  // Избранное
+  async addToFavorites(data: Omit<Favorite, "id" | "createdAt">): Promise<Favorite> {
+    const [favorite] = await db.insert(favorites).values({
+      ...data,
+      createdAt: new Date(),
+    }).returning();
+
+    // Увеличиваем счетчик избранного у объявления
+    await db.update(listings)
+      .set({ favorites: sql`favorites + 1` })
+      .where(eq(listings.id, data.listingId));
+
+    return favorite;
+  }
+
+  async removeFromFavorites(userId: number, listingId: number): Promise<void> {
+    await db.delete(favorites)
+      .where(
+        and(
+          eq(favorites.userId, userId),
+          eq(favorites.listingId, listingId)
+        )
+      );
+
+    // Уменьшаем счетчик избранного у объявления
+    await db.update(listings)
+      .set({ favorites: sql`favorites - 1` })
+      .where(eq(listings.id, listingId));
+  }
+
+  async getUserFavorites(userId: number): Promise<Listing[]> {
+    const userFavorites = await db.select()
+      .from(favorites)
+      .where(eq(favorites.userId, userId))
+      .innerJoin(listings, eq(favorites.listingId, listings.id));
+
+    return userFavorites.map(({ listings }) => listings);
+  }
+
+  // Подписки на поиск
+  async createSearchSubscription(data: Omit<SearchSubscription, "id" | "createdAt" | "isActive">): Promise<SearchSubscription> {
+    const [subscription] = await db.insert(searchSubscriptions).values({
+      ...data,
+      createdAt: new Date(),
+      isActive: true,
+    }).returning();
+    return subscription;
+  }
+
+  async getUserSearchSubscriptions(userId: number): Promise<SearchSubscription[]> {
+    return await db.select()
+      .from(searchSubscriptions)
+      .where(eq(searchSubscriptions.userId, userId));
+  }
+
+  // Арбитраж
+  async createDispute(data: Omit<Dispute, "id" | "status" | "createdAt" | "resolvedAt" | "moderatorId">): Promise<Dispute> {
+    const [dispute] = await db.insert(disputes).values({
+      ...data,
+      status: "pending",
+      createdAt: new Date(),
+    }).returning();
+    return dispute;
+  }
+
+  async updateDisputeStatus(id: number, status: string, resolution: string | null, moderatorId: number): Promise<Dispute> {
+    const [dispute] = await db.update(disputes)
+      .set({
+        status,
+        resolution,
+        moderatorId,
+        resolvedAt: new Date(),
+      })
+      .where(eq(disputes.id, id))
+      .returning();
+    return dispute;
+  }
+
+  async getDisputes(status?: string): Promise<Dispute[]> {
+    const query = db.select().from(disputes);
+    if (status) {
+      query.where(eq(disputes.status, status));
+    }
+    return await query.orderBy(desc(disputes.createdAt));
+  }
+
+  // Достижения
+  async unlockAchievement(userId: number, achievementId: number): Promise<UserAchievement> {
+    const [userAchievement] = await db.insert(userAchievements).values({
+      userId,
+      achievementId,
+      unlockedAt: new Date(),
+    }).returning();
+    return userAchievement;
+  }
+
+  async getUserAchievements(userId: number): Promise<Achievement[]> {
+    const userAchievements = await db.select()
+      .from(userAchievements)
+      .where(eq(userAchievements.userId, userId))
+      .innerJoin(achievements, eq(userAchievements.achievementId, achievements.id));
+
+    return userAchievements.map(({ achievements }) => achievements);
   }
 }
 
