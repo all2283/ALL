@@ -24,7 +24,7 @@ export function ChatWindow({ chatId, otherUserName, otherUserAvatar }: ChatWindo
 
   const { data: messages, isLoading } = useQuery<Message[]>({
     queryKey: [`/api/chats/${chatId}/messages`],
-    refetchInterval: 5000, // Опрашиваем каждые 5 секунд
+    refetchInterval: 5000, // Poll every 5 seconds
   });
 
   const sendMessageMutation = useMutation({
@@ -38,14 +38,14 @@ export function ChatWindow({ chatId, otherUserName, otherUserAvatar }: ChatWindo
     },
   });
 
-  // Прокручиваем к последнему сообщению при получении новых сообщений
+  // Auto-scroll to latest message when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Помечаем сообщения как прочитанные при открытии чата
+  // Mark messages as read when chat is opened
   useEffect(() => {
     if (user) {
       apiRequest("POST", `/api/chats/${chatId}/read`);

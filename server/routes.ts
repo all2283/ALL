@@ -165,7 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Чаты
+  // Chats
   app.get("/api/chats", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const chats = await storage.getUserChats(req.user.id);
@@ -179,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const listing = await storage.getListing(listingId);
     if (!listing) return res.status(404).send("Объявление не найдено");
 
-    // Проверяем, существует ли уже чат
+    // Check if chat already exists
     const existingChats = await storage.getUserChats(req.user.id);
     const existingChat = existingChats.find(
       chat => chat.listingId === listingId && 
@@ -206,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const chat = await storage.getChat(parseInt(req.params.id));
     if (!chat) return res.status(404).send("Чат не найден");
 
-    // Проверяем, является ли пользователь участником чата
+    // Check if user is a chat participant
     if (chat.buyerId !== req.user.id && chat.sellerId !== req.user.id) {
       return res.sendStatus(403);
     }
@@ -221,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const chat = await storage.getChat(parseInt(req.params.id));
     if (!chat) return res.status(404).send("Чат не найден");
 
-    // Проверяем, является ли пользователь участником чата
+    // Check if user is a chat participant
     if (chat.buyerId !== req.user.id && chat.sellerId !== req.user.id) {
       return res.sendStatus(403);
     }
@@ -241,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const chat = await storage.getChat(parseInt(req.params.id));
     if (!chat) return res.status(404).send("Чат не найден");
 
-    // Проверяем, является ли пользователь участником чата
+    // Check if user is a chat participant
     if (chat.buyerId !== req.user.id && chat.sellerId !== req.user.id) {
       return res.sendStatus(403);
     }
