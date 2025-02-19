@@ -1,7 +1,7 @@
 import { IStorage } from "./auth";
 import createMemoryStore from "memorystore";
 import session from "express-session";
-import type { User, Listing, Transaction, Review, InsertListing } from "@shared/schema";
+import type { User, Listing, Transaction, Review } from "@shared/schema";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -22,6 +22,17 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
+
+    // Создаем тестового модератора
+    const moderator = {
+      id: this.currentId++,
+      username: "admin",
+      password: "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9.f09696910d9b95a0d82c9bfec21c0d40", // пароль: admin
+      avatar: null,
+      balance: "0",
+      isModerator: true
+    };
+    this.users.set(moderator.id, moderator);
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -34,9 +45,15 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async createUser(insertUser: any): Promise<User> {
+  async createUser(insertUser: Omit<User, "id" | "avatar" | "balance" | "isModerator">): Promise<User> {
     const id = this.currentId++;
-    const user: User = { ...insertUser, id, balance: "0", isModerator: false };
+    const user: User = {
+      ...insertUser,
+      id,
+      avatar: null,
+      balance: "0",
+      isModerator: false
+    };
     this.users.set(id, user);
     return user;
   }
@@ -49,7 +66,7 @@ export class MemStorage implements IStorage {
     return this.listings.get(id);
   }
 
-  async createListing(data: InsertListing & { sellerId: number }): Promise<Listing> {
+  async createListing(data: Omit<Listing, "id" | "status" | "createdAt">): Promise<Listing> {
     const id = this.currentId++;
     const listing: Listing = {
       ...data,
@@ -75,6 +92,10 @@ export class MemStorage implements IStorage {
     return this.transactions.get(id);
   }
 
+  async getTransactions(): Promise<Transaction[]> {
+    return Array.from(this.transactions.values());
+  }
+
   async createTransaction(data: Omit<Transaction, "id" | "status" | "createdAt">): Promise<Transaction> {
     const id = this.currentId++;
     const transaction: Transaction = {
@@ -84,6 +105,13 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.transactions.set(id, transaction);
+
+    // Обновляем статус листинга на sold
+    const listing = this.listings.get(data.listingId);
+    if (listing) {
+      this.updateListingStatus(listing.id, "sold");
+    }
+
     return transaction;
   }
 
@@ -96,6 +124,10 @@ export class MemStorage implements IStorage {
     };
     this.reviews.set(id, review);
     return review;
+  }
+
+  async getReviews(): Promise<Review[]> {
+    return Array.from(this.reviews.values());
   }
 }
 

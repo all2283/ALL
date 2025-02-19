@@ -24,12 +24,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Transactions
+  app.get("/api/transactions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const transactions = await storage.getTransactions();
+    // Возвращаем только транзакции текущего пользователя
+    const userTransactions = transactions.filter(
+      t => t.buyerId === req.user.id || t.sellerId === req.user.id
+    );
+    res.json(userTransactions);
+  });
+
   app.post("/api/listings/:id/buy", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const listing = await storage.getListing(parseInt(req.params.id));
-    if (!listing) return res.status(404).send("Listing not found");
-    if (listing.status !== "active") return res.status(400).send("Listing not available");
-    if (listing.sellerId === req.user.id) return res.status(400).send("Cannot buy own listing");
+    if (!listing) return res.status(404).send("Объявление не найдено");
+    if (listing.status !== "active") return res.status(400).send("Объявление недоступно");
+    if (listing.sellerId === req.user.id) return res.status(400).send("Нельзя купить свое объявление");
 
     const transaction = await storage.createTransaction({
       listingId: listing.id,
@@ -41,11 +51,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reviews
+  app.get("/api/reviews", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const reviews = await storage.getReviews();
+    // Возвращаем только отзывы о текущем пользователе
+    const userReviews = reviews.filter(r => r.toUserId === req.user.id);
+    res.json(userReviews);
+  });
+
   app.post("/api/transactions/:id/review", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const transaction = await storage.getTransaction(parseInt(req.params.id));
-    if (!transaction) return res.status(404).send("Transaction not found");
-    if (transaction.buyerId !== req.user.id) return res.status(403).send("Unauthorized");
+    if (!transaction) return res.status(404).send("Транзакция не найдена");
+    if (transaction.buyerId !== req.user.id) return res.status(403).send("Нет доступа");
 
     const validatedData = insertReviewSchema.parse(req.body);
     const review = await storage.createReview({
@@ -61,8 +79,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/listings/:id/moderate", async (req, res) => {
     if (!req.isAuthenticated() || !req.user.isModerator) return res.sendStatus(403);
     const { action } = req.body;
-    if (action !== "approve" && action !== "reject") return res.status(400).send("Invalid action");
-    
+    if (action !== "approve" && action !== "reject") return res.status(400).send("Неверное действие");
+
     const listing = await storage.updateListingStatus(
       parseInt(req.params.id),
       action === "approve" ? "active" : "rejected"
