@@ -48,7 +48,7 @@ export default function AuthPage() {
         <div className="relative z-20 mt-auto">
           <blockquote className="space-y-2">
             <p className="text-lg">
-              Buy and sell game accounts, items, and currency safely and securely.
+              Безопасная торговая площадка для игровых аккаунтов, предметов и валюты.
             </p>
           </blockquote>
         </div>
@@ -58,8 +58,8 @@ export default function AuthPage() {
           <Card className="p-6">
             <Tabs defaultValue="login">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+                <TabsTrigger value="login">Вход</TabsTrigger>
+                <TabsTrigger value="register">Регистрация</TabsTrigger>
               </TabsList>
               <TabsContent value="login">
                 <LoginForm />
@@ -93,7 +93,7 @@ function LoginForm() {
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username</FormLabel>
+              <FormLabel>Имя пользователя</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -106,7 +106,7 @@ function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Пароль</FormLabel>
               <FormControl>
                 <Input type="password" {...field} />
               </FormControl>
@@ -115,7 +115,7 @@ function LoginForm() {
           )}
         />
         <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-          {loginMutation.isPending ? "Logging in..." : "Login"}
+          {loginMutation.isPending ? "Выполняется вход..." : "Войти"}
         </Button>
       </form>
     </Form>
@@ -140,7 +140,7 @@ function RegisterForm() {
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username</FormLabel>
+              <FormLabel>Имя пользователя</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
@@ -153,7 +153,7 @@ function RegisterForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Пароль</FormLabel>
               <FormControl>
                 <Input type="password" {...field} />
               </FormControl>
@@ -162,7 +162,7 @@ function RegisterForm() {
           )}
         />
         <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-          {registerMutation.isPending ? "Creating account..." : "Register"}
+          {registerMutation.isPending ? "Создание аккаунта..." : "Зарегистрироваться"}
         </Button>
       </form>
     </Form>

@@ -25,15 +25,15 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 const categories = [
-  "Game Accounts",
-  "Game Items",
-  "Game Currency",
+  "Игровые аккаунты",
+  "Игровые предметы",
+  "Игровая валюта",
 ] as const;
 
 export default function ListingPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  
+
   const form = useForm({
     resolver: zodResolver(insertListingSchema),
     defaultValues: {
@@ -53,14 +53,14 @@ export default function ListingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/listings"] });
       toast({
-        title: "Success",
-        description: "Your listing has been created and is pending approval",
+        title: "Успешно",
+        description: "Ваше объявление создано и ожидает проверки модератором",
       });
       setLocation("/profile");
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: "Ошибка",
         description: error.message,
         variant: "destructive",
       });
@@ -70,9 +70,9 @@ export default function ListingPage() {
   return (
     <div className="container max-w-2xl py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Create New Listing</h1>
+        <h1 className="text-3xl font-bold">Создать объявление</h1>
         <p className="text-muted-foreground">
-          Fill out the form below to list your item for sale
+          Заполните форму ниже, чтобы разместить свой товар
         </p>
       </div>
 
@@ -86,9 +86,9 @@ export default function ListingPage() {
             name="title"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Title</FormLabel>
+                <FormLabel>Название</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter listing title" {...field} />
+                  <Input placeholder="Введите название товара" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -100,10 +100,10 @@ export default function ListingPage() {
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Description</FormLabel>
+                <FormLabel>Описание</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="Describe your item"
+                    placeholder="Опишите ваш товар"
                     className="resize-none"
                     {...field}
                   />
@@ -118,13 +118,13 @@ export default function ListingPage() {
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price (USD)</FormLabel>
+                <FormLabel>Цена (₽)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder="Enter price"
+                    placeholder="Введите цену"
                     {...field}
                   />
                 </FormControl>
@@ -138,14 +138,14 @@ export default function ListingPage() {
             name="category"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Category</FormLabel>
+                <FormLabel>Категория</FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
+                      <SelectValue placeholder="Выберите категорию" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -166,9 +166,9 @@ export default function ListingPage() {
             name="imageUrl"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Image URL</FormLabel>
+                <FormLabel>URL изображения</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter image URL" {...field} />
+                  <Input placeholder="Введите URL изображения" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -180,7 +180,7 @@ export default function ListingPage() {
             className="w-full"
             disabled={createListingMutation.isPending}
           >
-            {createListingMutation.isPending ? "Creating..." : "Create Listing"}
+            {createListingMutation.isPending ? "Создание..." : "Создать объявление"}
           </Button>
         </form>
       </Form>

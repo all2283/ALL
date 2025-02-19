@@ -14,8 +14,8 @@ export default function HomePage() {
 
   return (
     <div className="container py-8">
-      <h1 className="text-4xl font-bold mb-8">Featured Listings</h1>
-      
+      <h1 className="text-4xl font-bold mb-8">Актуальные предложения</h1>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {listings?.map((listing) => (
           <Card key={listing.id}>
@@ -28,7 +28,7 @@ export default function HomePage() {
               </p>
               <div className="flex justify-between items-center">
                 <span className="text-lg font-bold">
-                  ${Number(listing.price).toFixed(2)}
+                  {Number(listing.price).toFixed(2)} ₽
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {listing.category}

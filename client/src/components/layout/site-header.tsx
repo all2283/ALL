@@ -25,9 +25,9 @@ export function SiteHeader() {
         </Link>
 
         <nav className="flex items-center space-x-6 text-sm font-medium flex-1">
-          <Link href="/listings/games">Game Accounts</Link>
-          <Link href="/listings/items">Game Items</Link>
-          <Link href="/listings/currency">Game Currency</Link>
+          <Link href="/listings/games">Игровые аккаунты</Link>
+          <Link href="/listings/items">Игровые предметы</Link>
+          <Link href="/listings/currency">Игровая валюта</Link>
         </nav>
 
         <div className="flex items-center space-x-4">
@@ -44,9 +44,9 @@ export function SiteHeader() {
           {user ? (
             <>
               <Button asChild variant="outline">
-                <Link href="/listings/new">Sell Item</Link>
+                <Link href="/listings/new">Продать</Link>
               </Button>
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -60,27 +60,27 @@ export function SiteHeader() {
                   <DropdownMenuItem asChild>
                     <Link href="/profile">
                       <User className="mr-2 h-4 w-4" />
-                      Profile
+                      Профиль
                     </Link>
                   </DropdownMenuItem>
                   {user.isModerator && (
                     <DropdownMenuItem asChild>
                       <Link href="/moderate">
                         <Package className="mr-2 h-4 w-4" />
-                        Moderate
+                        Модерация
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => logoutMutation.mutate()}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    Выйти
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           ) : (
             <Button asChild>
-              <Link href="/auth">Login</Link>
+              <Link href="/auth">Войти</Link>
             </Button>
           )}
         </div>

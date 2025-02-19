@@ -13,7 +13,7 @@ export default function ModerationPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Redirect if not a moderator
+  // Редирект если не модератор
   if (!user?.isModerator) {
     setLocation("/");
     return null;
@@ -31,13 +31,13 @@ export default function ModerationPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/listings"] });
       toast({
-        title: "Success",
-        description: "Listing has been moderated",
+        title: "Успешно",
+        description: "Статус объявления обновлен",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: "Ошибка",
         description: error.message,
         variant: "destructive",
       });
@@ -57,9 +57,9 @@ export default function ModerationPage() {
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Moderation Queue</h1>
+        <h1 className="text-3xl font-bold">Модерация объявлений</h1>
         <p className="text-muted-foreground">
-          Review and approve pending listings
+          Проверка и одобрение новых объявлений
         </p>
       </div>
 
@@ -68,7 +68,7 @@ export default function ModerationPage() {
           <Card>
             <CardContent className="p-6">
               <p className="text-center text-muted-foreground">
-                No pending listings to review
+                Нет объявлений для проверки
               </p>
             </CardContent>
           </Card>
@@ -85,10 +85,10 @@ export default function ModerationPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">
-                      ${Number(listing.price).toFixed(2)}
+                      {Number(listing.price).toFixed(2)} ₽
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Category: {listing.category}
+                      Категория: {listing.category}
                     </p>
                   </div>
                   <div className="flex gap-2">

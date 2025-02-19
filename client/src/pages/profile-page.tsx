@@ -46,16 +46,16 @@ export default function ProfilePage() {
         <div>
           <h1 className="text-3xl font-bold">{user?.username}</h1>
           <p className="text-muted-foreground">
-            Balance: ${Number(user?.balance).toFixed(2)}
+            Баланс: {Number(user?.balance).toFixed(2)} ₽
           </p>
         </div>
       </div>
 
       <Tabs defaultValue="listings" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="listings">My Listings</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="reviews">Reviews</TabsTrigger>
+          <TabsTrigger value="listings">Мои товары</TabsTrigger>
+          <TabsTrigger value="transactions">История сделок</TabsTrigger>
+          <TabsTrigger value="reviews">Отзывы</TabsTrigger>
         </TabsList>
 
         <TabsContent value="listings">
@@ -71,10 +71,12 @@ export default function ProfilePage() {
                   </p>
                   <div className="flex justify-between items-center">
                     <span className="font-bold">
-                      ${Number(listing.price).toFixed(2)}
+                      {Number(listing.price).toFixed(2)} ₽
                     </span>
                     <span className="text-sm px-2 py-1 bg-secondary rounded-full">
-                      {listing.status}
+                      {listing.status === 'pending' ? 'На модерации' :
+                       listing.status === 'active' ? 'Активно' :
+                       listing.status === 'sold' ? 'Продано' : 'Отклонено'}
                     </span>
                   </div>
                 </CardContent>
@@ -91,14 +93,15 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-medium">
-                        {transaction.buyerId === user?.id ? "Bought" : "Sold"}
+                        {transaction.buyerId === user?.id ? "Покупка" : "Продажа"}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        ${Number(transaction.amount).toFixed(2)}
+                        {Number(transaction.amount).toFixed(2)} ₽
                       </p>
                     </div>
                     <span className="text-sm px-2 py-1 bg-secondary rounded-full">
-                      {transaction.status}
+                      {transaction.status === 'completed' ? 'Завершено' :
+                       transaction.status === 'cancelled' ? 'Отменено' : 'Спор'}
                     </span>
                   </div>
                 </CardContent>
@@ -115,7 +118,7 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">Rating: {review.rating}/5</span>
+                        <span className="font-medium">Оценка: {review.rating}/5</span>
                       </div>
                       {review.comment && (
                         <p className="text-sm text-muted-foreground mt-2">
