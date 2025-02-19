@@ -37,7 +37,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/listings/:id", async (req, res) => {
-    const listing = await storage.getListing(parseInt(req.params.id));
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).send("Invalid listing ID");
+    }
+    const listing = await storage.getListing(id);
     if (!listing) return res.status(404).send("Объявление не найдено");
     res.json(listing);
   });
