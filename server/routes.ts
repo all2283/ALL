@@ -3,14 +3,43 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertListingSchema, insertReviewSchema } from "@shared/schema";
+import { insertCategorySchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
+  // Categories
+  app.get("/api/categories", async (req, res) => {
+    const categories = await storage.getCategories();
+    res.json(categories);
+  });
+
+  app.post("/api/categories", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user.isModerator) return res.sendStatus(403);
+    const validatedData = insertCategorySchema.parse(req.body);
+    const category = await storage.createCategory(validatedData);
+    res.status(201).json(category);
+  });
+
   // Listings
   app.get("/api/listings", async (req, res) => {
+    const { type } = req.query;
     const listings = await storage.getListings();
-    res.json(listings);
+    if (type) {
+      const categories = await storage.getCategories();
+      const categoryIds = categories
+        .filter(c => c.type === type)
+        .map(c => c.name);
+      res.json(listings.filter(l => categoryIds.includes(l.category)));
+    } else {
+      res.json(listings);
+    }
+  });
+
+  app.get("/api/listings/:id", async (req, res) => {
+    const listing = await storage.getListing(parseInt(req.params.id));
+    if (!listing) return res.status(404).send("Объявление не найдено");
+    res.json(listing);
   });
 
   app.post("/api/listings", async (req, res) => {

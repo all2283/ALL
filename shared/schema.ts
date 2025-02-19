@@ -11,10 +11,17 @@ export const users = pgTable("users", {
   isModerator: boolean("is_moderator").default(false).notNull(),
 });
 
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  type: text("type").notNull(), // games, items, currency
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const moderationRequests = pgTable("moderation_requests", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
-  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  status: text("status").notNull().default("pending"),
   comment: text("comment"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -28,6 +35,13 @@ export const listings = pgTable("listings", {
   category: text("category").notNull(),
   status: text("status").notNull().default("pending"),
   imageUrl: text("image_url"),
+  accountLogin: text("account_login"),
+  accountPassword: text("account_password"),
+  accountEmail: text("account_email"),
+  accountLevel: integer("account_level"),
+  accountRank: text("account_rank"),
+  accountServer: text("account_server"),
+  additionalImages: text("additional_images").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -51,15 +65,9 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Schema для создания нового запроса на модерацию
-export const insertModerationRequestSchema = createInsertSchema(moderationRequests).pick({
-  userId: true,
-});
-
-// Существующие схемы
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertCategorySchema = createInsertSchema(categories).pick({
+  name: true,
+  type: true,
 });
 
 export const insertListingSchema = createInsertSchema(listings).pick({
@@ -68,6 +76,22 @@ export const insertListingSchema = createInsertSchema(listings).pick({
   price: true,
   category: true,
   imageUrl: true,
+  accountLogin: true,
+  accountPassword: true,
+  accountEmail: true,
+  accountLevel: true,
+  accountRank: true,
+  accountServer: true,
+  additionalImages: true,
+});
+
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+});
+
+export const insertModerationRequestSchema = createInsertSchema(moderationRequests).pick({
+  userId: true,
 });
 
 export const insertReviewSchema = createInsertSchema(reviews).pick({
@@ -75,9 +99,10 @@ export const insertReviewSchema = createInsertSchema(reviews).pick({
   comment: true,
 });
 
-// Типы
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type Listing = typeof listings.$inferSelect;
 export type InsertListing = z.infer<typeof insertListingSchema>;
 export type Transaction = typeof transactions.$inferSelect;

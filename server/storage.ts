@@ -3,10 +3,38 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import session from "express-session";
-import type { User, Listing, Transaction, Review, ModerationRequest } from "@shared/schema";
-import { users, listings, transactions, reviews, moderationRequests } from "@shared/schema";
+import type { User, Listing, Transaction, Review, ModerationRequest, Category } from "@shared/schema";
+import { users, listings, transactions, reviews, moderationRequests, categories } from "@shared/schema";
 
 const PostgresSessionStore = connectPg(session);
+
+export interface IStorage {
+  sessionStore: session.Store;
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(insertUser: Omit<User, "id" | "avatar" | "balance" | "isModerator">): Promise<User>;
+  getListings(): Promise<Listing[]>;
+  getListing(id: number): Promise<Listing | undefined>;
+  createListing(data: Omit<Listing, "id" | "status" | "createdAt">): Promise<Listing>;
+  updateListingStatus(id: number, status: string): Promise<Listing | undefined>;
+  getTransaction(id: number): Promise<Transaction | undefined>;
+  getTransactions(): Promise<Transaction[]>;
+  createTransaction(data: Omit<Transaction, "id" | "status" | "createdAt">): Promise<Transaction>;
+  createReview(data: Omit<Review, "id" | "createdAt">): Promise<Review>;
+  getReviews(): Promise<Review[]>;
+  getModerationRequests(): Promise<ModerationRequest[]>;
+  getModerationRequest(id: number): Promise<ModerationRequest | undefined>;
+  createModerationRequest(data: Omit<ModerationRequest, "id" | "status" | "comment" | "createdAt">): Promise<ModerationRequest>;
+  updateModerationRequestStatus(id: number, status: string, comment: string | null): Promise<ModerationRequest | undefined>;
+  getCategories(): Promise<Category[]>;
+  createCategory(data: InsertCategory): Promise<Category>;
+}
+
+interface InsertCategory {
+  name: string;
+  description?: string;
+}
+
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
@@ -161,6 +189,18 @@ export class DatabaseStorage implements IStorage {
     }
 
     return request;
+  }
+
+  async getCategories(): Promise<Category[]> {
+    return await db.select().from(categories);
+  }
+
+  async createCategory(data: InsertCategory): Promise<Category> {
+    const [category] = await db.insert(categories).values({
+      ...data,
+      createdAt: new Date(),
+    }).returning();
+    return category;
   }
 }
 
